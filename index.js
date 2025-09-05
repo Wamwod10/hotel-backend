@@ -8,6 +8,9 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5002;
+
+// Frontenddagi .env da siz VITE_API_BASE_URL deb yozgan ekansiz, backend uchun esa oddiy BASE_URL.
+// Shuning uchun bu yerda BASE_URL o‘zgaruvchisini o‘qib olamiz.
 const BASE_URL = process.env.BASE_URL || "https://khamsahotel.uz";
 
 if (!process.env.OCTO_SHOP_ID || !process.env.OCTO_SECRET || !process.env.EMAIL_USER) {
@@ -24,7 +27,9 @@ app.use(
   cors({
     origin: [
       "https://khamsahotel.uz",
-      "https://www.khamsahotel.uz"
+      "https://www.khamsahotel.uz",
+      // Agar frontendingiz renderda joylashgan bo‘lsa, quyidagilarni ham qo‘shing:
+      "https://your-frontend-url.onrender.com"
     ],
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type"],
