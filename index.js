@@ -10,7 +10,12 @@ const app = express();
 const PORT = process.env.PORT || 5002;
 const BASE_URL = process.env.BASE_URL || "https://khamsahotel.uz";
 
-if (!process.env.OCTO_SHOP_ID || !process.env.OCTO_SECRET || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+if (
+  !process.env.OCTO_SHOP_ID ||
+  !process.env.OCTO_SECRET ||
+  !process.env.EMAIL_USER ||
+  !process.env.EMAIL_PASS
+) {
   console.error("❌ .env fayldagi muhim qiymatlar yetishmayapti.");
   process.exit(1);
 }
@@ -24,11 +29,20 @@ const EUR_TO_UZS = 14000;
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
   port: 465,
-  secure: true, // SSL
+  secure: true, // SSL orqali
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS, // Gmail App Password bo‘lishi kerak
+    pass: process.env.EMAIL_PASS, // Gmail App Password bo‘lishi kerak!
   },
+});
+
+// SMTP server bilan bog'lanishni tekshirish
+transporter.verify((error, success) => {
+  if (error) {
+    console.error("❌ SMTP konfiguratsiyasi xatosi:", error);
+  } else {
+    console.log("✅ SMTP server bilan ulanish muvaffaqiyatli.");
+  }
 });
 
 async function sendEmail(to, subject, text) {
@@ -49,7 +63,8 @@ async function sendEmail(to, subject, text) {
     console.log("✅ Email yuborildi:", info.messageId);
     return info;
   } catch (err) {
-    console.error("❌ Email yuborishda xatolik:", err);
+    console.error("❌ Email yuborishda xatolik:", err.message);
+    console.error(err);
     throw err;
   }
 }
@@ -59,14 +74,16 @@ app.use(
     origin: [
       "https://khamsahotel.uz",
       "https://www.khamsahotel.uz",
-      "https://your-frontend-url.onrender.com", // frontend URL ni o‘zgartiring kerak bo‘lsa
+      "https://your-frontend-url.onrender.com", // kerak bo‘lsa frontend URL ni o‘zgartiring
     ],
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type"],
   })
 );
 
+// Body parser
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // callback uchun qo‘shimcha
 
 // To‘lov yaratish endpointi
 app.post("/create-payment", async (req, res) => {
@@ -128,28 +145,31 @@ app.post("/create-payment", async (req, res) => {
 
 // Callback endpoint (to‘lov tasdiqlangandan keyin Octo tomonidan chaqiriladi)
 app.post("/payment-callback", async (req, res) => {
-  console.log("Callback body:", req.body); // Callback kelayotganini tekshirish uchun log
+  console.log("📩 Callback body:", req.body);
 
   try {
     const { total_sum, description, custom_data } = req.body;
 
-    if (custom_data?.email) {
-      const amount = Math.round(total_sum / EUR_TO_UZS);
-
-      // Mijozga tasdiq xabari
-      await sendEmail(
-        custom_data.email,
-        "To'lov tasdiqlandi - Khamsa Hotel",
-        `Hurmatli mijoz, siz "${description}" uchun ${amount} EUR miqdorida to'lov amalga oshirdingiz. Rahmat!`
-      );
-
-      // Administratorga xabar
-      await sendEmail(
-        process.env.EMAIL_USER,
-        "Yangi to'lov - Khamsa Hotel",
-        `Mijoz ${custom_data.email} ${description} uchun ${amount} EUR to'lov qildi.`
-      );
+    if (!custom_data || !custom_data.email) {
+      console.warn("⚠️ Callbackda custom_data.email mavjud emas!", req.body);
+      return res.status(400).json({ error: "custom_data.email mavjud emas" });
     }
+
+    const amount = Math.round(total_sum / EUR_TO_UZS);
+
+    // Mijozga tasdiq xabari
+    await sendEmail(
+      custom_data.email,
+      "To'lov tasdiqlandi - Khamsa Hotel",
+      `Hurmatli mijoz, siz "${description}" uchun ${amount} EUR miqdorida to'lov amalga oshirdingiz. Rahmat!`
+    );
+
+    // Administratorga xabar
+    await sendEmail(
+      process.env.EMAIL_USER,
+      "Yangi to'lov - Khamsa Hotel",
+      `Mijoz ${custom_data.email} ${description} uchun ${amount} EUR to'lov qildi.`
+    );
 
     res.json({ status: "ok" });
   } catch (error) {
