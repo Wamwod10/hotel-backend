@@ -2,17 +2,15 @@ import express from "express";
 import cors from "cors";
 import fetch from "node-fetch";
 import dotenv from "dotenv";
-import sendEmail from "./gmail.js";
+import nodemailer from "nodemailer";
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5002;
-
-
 const BASE_URL = process.env.BASE_URL || "https://khamsahotel.uz";
 
-if (!process.env.OCTO_SHOP_ID || !process.env.OCTO_SECRET || !process.env.EMAIL_USER) {
+if (!process.env.OCTO_SHOP_ID || !process.env.OCTO_SECRET || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
   console.error("❌ .env fayldagi muhim qiymatlar yetishmayapti.");
   process.exit(1);
 }
@@ -22,13 +20,46 @@ const SHOP_ID = process.env.OCTO_SHOP_ID;
 const SECRET_KEY = process.env.OCTO_SECRET;
 const EUR_TO_UZS = 14000;
 
+// Nodemailer konfiguratsiyasi
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true, // SSL
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS, // Gmail App Password bo‘lishi kerak
+  },
+});
+
+async function sendEmail(to, subject, text) {
+  if (!to || !subject || !text) {
+    console.warn("⚠️ sendEmail: to, subject yoki text yo‘q");
+    return;
+  }
+
+  try {
+    const mailOptions = {
+      from: `"Khamsa Hotel" <${process.env.EMAIL_USER}>`,
+      to,
+      subject,
+      text,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log("✅ Email yuborildi:", info.messageId);
+    return info;
+  } catch (err) {
+    console.error("❌ Email yuborishda xatolik:", err);
+    throw err;
+  }
+}
+
 app.use(
   cors({
     origin: [
       "https://khamsahotel.uz",
       "https://www.khamsahotel.uz",
-      // Agar frontendingiz renderda joylashgan bo‘lsa, quyidagilarni ham qo‘shing:
-      "https://your-frontend-url.onrender.com"
+      "https://your-frontend-url.onrender.com", // frontend URL ni o‘zgartiring kerak bo‘lsa
     ],
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type"],
@@ -37,6 +68,7 @@ app.use(
 
 app.use(express.json());
 
+// To‘lov yaratish endpointi
 app.post("/create-payment", async (req, res) => {
   try {
     const { amount, description = "Mehmonxona to'lovi", email } = req.body;
@@ -94,19 +126,24 @@ app.post("/create-payment", async (req, res) => {
   }
 });
 
+// Callback endpoint (to‘lov tasdiqlangandan keyin Octo tomonidan chaqiriladi)
 app.post("/payment-callback", async (req, res) => {
+  console.log("Callback body:", req.body); // Callback kelayotganini tekshirish uchun log
+
   try {
     const { total_sum, description, custom_data } = req.body;
 
     if (custom_data?.email) {
       const amount = Math.round(total_sum / EUR_TO_UZS);
 
+      // Mijozga tasdiq xabari
       await sendEmail(
         custom_data.email,
         "To'lov tasdiqlandi - Khamsa Hotel",
         `Hurmatli mijoz, siz "${description}" uchun ${amount} EUR miqdorida to'lov amalga oshirdingiz. Rahmat!`
       );
 
+      // Administratorga xabar
       await sendEmail(
         process.env.EMAIL_USER,
         "Yangi to'lov - Khamsa Hotel",
