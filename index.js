@@ -8,10 +8,8 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5002;
-
 const BASE_URL = process.env.BASE_URL || "https://khamsahotel.uz";
 
-// Muvofiq .env qiymatlari mavjudligini tekshir
 if (!process.env.OCTO_SHOP_ID || !process.env.OCTO_SECRET || !process.env.EMAIL_USER) {
   console.error("❌ .env fayldagi muhim qiymatlar yetishmayapti.");
   process.exit(1);
@@ -22,12 +20,11 @@ const SHOP_ID = process.env.OCTO_SHOP_ID;
 const SECRET_KEY = process.env.OCTO_SECRET;
 const EUR_TO_UZS = 14000;
 
-// faqat domenlarga ruxsat
 app.use(
   cors({
     origin: [
       "https://khamsahotel.uz",
-      "https://www.khamsahotel.uz",
+      "https://www.khamsahotel.uz"
     ],
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type"],
@@ -36,7 +33,6 @@ app.use(
 
 app.use(express.json());
 
-// TO‘LOV YARATISH ROUTE
 app.post("/create-payment", async (req, res) => {
   try {
     const { amount, description = "Mehmonxona to'lovi", email } = req.body;
@@ -75,6 +71,7 @@ app.post("/create-payment", async (req, res) => {
 
     const text = await response.text();
     let data;
+
     try {
       data = JSON.parse(text);
     } catch (e) {
@@ -93,7 +90,6 @@ app.post("/create-payment", async (req, res) => {
   }
 });
 
-// CALLBACK ROUTE
 app.post("/payment-callback", async (req, res) => {
   try {
     const { total_sum, description, custom_data } = req.body;
@@ -101,14 +97,12 @@ app.post("/payment-callback", async (req, res) => {
     if (custom_data?.email) {
       const amount = Math.round(total_sum / EUR_TO_UZS);
 
-      // mijozga email yuborish
       await sendEmail(
         custom_data.email,
         "To'lov tasdiqlandi - Khamsa Hotel",
         `Hurmatli mijoz, siz "${description}" uchun ${amount} EUR miqdorida to'lov amalga oshirdingiz. Rahmat!`
       );
 
-      // admin'ga email yuborish
       await sendEmail(
         process.env.EMAIL_USER,
         "Yangi to'lov - Khamsa Hotel",
@@ -123,7 +117,6 @@ app.post("/payment-callback", async (req, res) => {
   }
 });
 
-// LISTEN
 app.listen(PORT, () => {
   console.log(`✅ Backend ishga tushdi: ${BASE_URL} (port ${PORT})`);
 });
