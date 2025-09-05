@@ -128,6 +128,19 @@ app.post("/create-payment", async (req, res) => {
   }
 });
 
+app.post("/send-email", async (req, res) => {
+  const { to, subject, text } = req.body;
+
+  try {
+    await sendEmail(to, subject, text);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("❌ Email yuborilmadi:", err);
+    res.status(500).json({ success: false, error: "Email yuborilmadi" });
+  }
+});
+
+
 // ✅ Payment success (email shu yerda yuboriladi)
 app.post("/success", async (req, res) => {
   console.log("➡️ /success ga kelgan body:", req.body);
