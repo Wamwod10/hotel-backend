@@ -9,6 +9,8 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+const BASE_URL = process.env.BASE_URL || "https://khamsahotel.uz";
+
 // Muvofiq .env qiymatlari mavjudligini tekshir
 if (!process.env.OCTO_SHOP_ID || !process.env.OCTO_SECRET || !process.env.EMAIL_USER) {
   console.error("❌ .env fayldagi muhim qiymatlar yetishmayapti.");
@@ -59,8 +61,8 @@ app.post("/create-payment", async (req, res) => {
       total_sum: amountUZS,
       currency: "UZS",
       description: `${description} (${amount} EUR)`,
-      return_url: "https://khamsahotel.uz/success",
-      notify_url: "https://khamsahotel.uz/payment-callback",
+      return_url: `${BASE_URL}/success`,
+      notify_url: `${BASE_URL}/payment-callback`,
       language: "uz",
       custom_data: { email },
     };
@@ -123,5 +125,5 @@ app.post("/payment-callback", async (req, res) => {
 
 // LISTEN
 app.listen(PORT, () => {
-  console.log(`✅ Backend ishga tushdi: http://localhost:${PORT}`);
+  console.log(`✅ Backend ishga tushdi: ${BASE_URL} (port ${PORT})`);
 });
