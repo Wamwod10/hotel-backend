@@ -9,6 +9,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5002;
 
+
 const BASE_URL = process.env.BASE_URL || "https://khamsahotel.uz";
 
 if (!process.env.OCTO_SHOP_ID || !process.env.OCTO_SECRET || !process.env.EMAIL_USER) {
@@ -26,8 +27,8 @@ app.use(
     origin: [
       "https://khamsahotel.uz",
       "https://www.khamsahotel.uz",
-      // Frontend render URL bo‘lsa, uni ham shu yerga qo‘shing:
-      "localhost:5173",
+      // Agar frontendingiz renderda joylashgan bo‘lsa, quyidagilarni ham qo‘shing:
+      "https://your-frontend-url.onrender.com"
     ],
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type"],
@@ -94,8 +95,6 @@ app.post("/create-payment", async (req, res) => {
 });
 
 app.post("/payment-callback", async (req, res) => {
-  console.log("Callback body:", req.body); // Callback kelayotganini tekshirish uchun log
-
   try {
     const { total_sum, description, custom_data } = req.body;
 
