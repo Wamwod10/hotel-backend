@@ -9,6 +9,12 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// 🔐 Muvofiq .env qiymatlari mavjudligini tekshir
+if (!process.env.OCTO_SHOP_ID || !process.env.OCTO_SECRET || !process.env.EMAIL_USER) {
+  console.error("❌ .env fayldagi muhim qiymatlar yetishmayapti.");
+  process.exit(1);
+}
+
 const OCTO_API_URL = "https://secure.octo.uz/prepare_payment";
 const SHOP_ID = process.env.OCTO_SHOP_ID;
 const SECRET_KEY = process.env.OCTO_SECRET;
@@ -28,7 +34,9 @@ app.use(
 
 app.use(express.json());
 
-// 📌 To‘lov yaratish
+// ================================
+// 📌 TO‘LOV YARATISH ROUTE
+// ================================
 app.post("/create-payment", async (req, res) => {
   try {
     const { amount, description = "Mehmonxona to'lovi", email } = req.body;
@@ -36,7 +44,8 @@ app.post("/create-payment", async (req, res) => {
     if (!amount || typeof amount !== "number") {
       return res.status(400).json({ error: "Noto‘g‘ri amount qiymati" });
     }
-    if (!email) {
+
+    if (!email || typeof email !== "string") {
       return res.status(400).json({ error: "Email kiritilishi shart" });
     }
 
@@ -47,13 +56,13 @@ app.post("/create-payment", async (req, res) => {
       octo_secret: SECRET_KEY,
       shop_transaction_id: Date.now().toString(),
       auto_capture: true,
-      test: false, // 🔴 productionda TEST=FALSE
+      test: false, // 🔴 Productionda test false bo‘lishi kerak
       init_time: new Date().toISOString().replace("T", " ").substring(0, 19),
       total_sum: amountUZS,
       currency: "UZS",
       description: `${description} (${amount} EUR)`,
-      return_url: "https://khamsahotel.uz/success", // 🔴 doim domen orqali
-      notify_url: `https://khamsahotel.uz/payment-callback`,
+      return_url: "https://khamsahotel.uz/success",
+      notify_url: "https://khamsahotel.uz/payment-callback",
       language: "uz",
       custom_data: { email },
     };
@@ -68,7 +77,7 @@ app.post("/create-payment", async (req, res) => {
     let data;
     try {
       data = JSON.parse(text);
-    } catch {
+    } catch (e) {
       console.error("❌ Octo noto‘g‘ri javob:", text);
       return res.status(500).json({ error: "Octo noto‘g‘ri javob" });
     }
@@ -80,11 +89,13 @@ app.post("/create-payment", async (req, res) => {
     }
   } catch (error) {
     console.error("❌ To'lov yaratishda xato:", error);
-    res.status(500).json({ error: error.message || "Server xatosi" });
+    res.status(500).json({ error: "Server xatosi" });
   }
 });
 
-// 📌 OctoBank callback
+// ================================
+// 📌 CALLBACK ROUTE
+// ================================
 app.post("/payment-callback", async (req, res) => {
   try {
     const { total_sum, description, custom_data } = req.body;
@@ -92,14 +103,14 @@ app.post("/payment-callback", async (req, res) => {
     if (custom_data?.email) {
       const amount = Math.round(total_sum / EUR_TO_UZS);
 
-      // mijozga email
+      // mijozga email yuborish
       await sendEmail(
         custom_data.email,
         "To'lov tasdiqlandi - Khamsa Hotel",
         `Hurmatli mijoz, siz "${description}" uchun ${amount} EUR miqdorida to'lov amalga oshirdingiz. Rahmat!`
       );
 
-      // admin'ga email
+      // admin'ga email yuborish
       await sendEmail(
         process.env.EMAIL_USER,
         "Yangi to'lov - Khamsa Hotel",
@@ -114,6 +125,9 @@ app.post("/payment-callback", async (req, res) => {
   }
 });
 
+// ================================
+// ✅ LISTEN
+// ================================
 app.listen(PORT, () => {
-  console.log(`✅ Backend ${PORT}-portda ishlayapti`);
+  console.log(`✅ Backend ishga tushdi: http://localhost:${PORT}`);
 });
