@@ -7,7 +7,7 @@ import sendEmail from "./gmail.js";
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5002;
 
 const BASE_URL = process.env.BASE_URL || "https://khamsahotel.uz";
 
