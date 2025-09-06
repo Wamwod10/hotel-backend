@@ -59,7 +59,6 @@ app.use(
     origin: [
       "https://khamsahotel.uz",
       "https://www.khamsahotel.uz",
-      "https://your-frontend.onrender.com", // kerak bo‘lsa frontendni qo‘shing
     ],
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type"],
